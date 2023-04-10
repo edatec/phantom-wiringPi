@@ -1,33 +1,118 @@
 WiringPi (Unofficial Mirror/Fork)
 =================================
 
-This is an unofficial mirror/fork of wiringPi to support ports (Python/Ruby/etc).  With the
-[end of official development](http://wiringpi.com/wiringpi-deprecated/), this repository
-has become a mirror of the last "official" source release, plus a fork facilitating updates
-to support newer hardware (primarily for use by the ports) and fix bugs.
+This is a GPIO access library for REIMEI1(Phantom). It is based on original WiringPi for Raspberry Pi.
 
-  * The final "official" source release can be found at the
-    [`final_source_2.50`](https://github.com/WiringPi/WiringPi/tree/final_official_2.50) tag.
-  * The default `master` branch contains code that has been written since that final source
-    release to provide support for newer hardware.
+# Installation
 
-Ports
------
+## Install WiringPi
 
-wiringPi has been wrapped for multiple languages:
+```sh
+git clone https://github.com/edatec/phantom-wiringPi.git
+cd phantom-wiringPi
+./build clean
+./build
+```
 
-* Node - https://github.com/WiringPi/WiringPi-Node
-* Perl - https://github.com/WiringPi/WiringPi-Perl
-* PHP - https://github.com/WiringPi/WiringPi-PHP
-* Python - https://github.com/WiringPi/WiringPi-Python
-* Ruby - https://github.com/WiringPi/WiringPi-Ruby
+## Uninstall WiringPi
+```sh
+./build uninstall
+```
 
-Support
--------
 
-Please do not email Gordon if you have issues, he will not be able to help.
+# Usage
 
-Pull-requests may be accepted to add or fix support for newer hardware, but new features or
-other changes may not be accepted.
+## gpio command
 
-For support, comments, questions, etc please join the WiringPi Discord channel: https://discord.gg/SM4WUVG
+```sh
+gpio readall
+
++------+-----+---------+------+---+--Phantom-+---+------+---------+-----+-----+
+ | GPIO | wPi |   Name  | Mode | V | Physical | V | Mode | Name    | wPi | GPIO |
+ +------+-----+---------+------+---+----++----+---+------+---------+-----+------+
+ |      |     |    3.3v |      |   |  1 || 2  |   |      | 5v      |     |      |
+ |   70 |   8 |   SDA.1 |   IN | 0 |  3 || 4  |   |      | 5v      |     |      |
+ |   71 |   9 |   SCL.1 |   IN | 0 |  5 || 6  |   |      | 0v      |     |      |
+ |   83 |   7 |    PIN7 |   IN | 1 |  7 || 8  | 0 | IN   | TxD     | 15  | 37   |
+ |      |     |      0v |      |   |  9 || 10 | 0 | IN   | RxD     | 16  | 38   |
+ |   79 |   0 |   PIN11 |   IN | 0 | 11 || 12 | 1 | IN   | PIN12   | 1   | 33   |
+ |   75 |   2 |   PIN13 |   IN | 0 | 13 || 14 |   |      | 0v      |     |      |
+ |   76 |   3 |   PIN15 |   IN | 0 | 15 || 16 | 1 | IN   | PIN16   | 4   | 77   |
+ |      |     |    3.3v |      |   | 17 || 18 | 0 | IN   | PIN18   | 5   | 72   |
+ |   45 |  12 |    MOSI |   IN | 0 | 19 || 20 |   |      | 0v      |     |      |
+ |   46 |  13 |    MISO |   IN | 0 | 21 || 22 | 0 | IN   | PIN22   | 6   | 73   |
+ |   48 |  14 |    SCLK |   IN | 0 | 23 || 24 | 0 | IN   | CE0     | 10  | 47   |
+ |      |     |      0v |      |   | 25 || 26 | 0 | IN   | CE1     | 11  | 78   |
+ |    0 |  30 |   SDA.0 |   IN | 0 | 27 || 28 | 0 | IN   | SCL.0   | 31  | 1    |
+ |   36 |  21 |   PIN29 |   IN | 0 | 29 || 30 |   |      | 0v      |     |      |
+ |   32 |  22 |   PIN31 |   IN | 0 | 31 || 32 | 0 | IN   | PIN32   | 26  | 35   |
+ |   82 |  23 |   PIN33 |   IN | 0 | 33 || 34 |   |      | 0v      |     |      |
+ |   40 |  24 |   PIN35 |   IN | 0 | 35 || 36 | 0 | IN   | PIN36   | 27  | 80   |
+ |   74 |  25 |   PIN37 |   IN | 0 | 37 || 38 | 0 | IN   | PIN38   | 28  | 81   |
+ |      |     |      0v |      |   | 39 || 40 | 0 | IN   | PIN40   | 29  | 31   |
+ +------+-----+---------+------+---+----++----+---+------+---------+-----+------+
+ | GPIO | wPi |   Name  | Mode | V | Physical | V | Mode | Name    | wPi | GPIO |
+ +------+-----+---------+------+---+--Phantom-+---+------+---------+-----+------+
+
+```
+
+### Configure wiringPi pin as output
+
+Taking PIN15 as an example
+
+```sh
+gpio export 3 out
+#output high level
+gpio write 3 1
+#output low level
+gpio write 3 0
+```
+
+### Configure wiring pin as input
+
+Taking PIN15 as an example
+
+```sh
+gpio export 3 in
+#read PIN15 level
+gpio read 3
+```
+
+
+## Code Sample with wiringPi
+
+Taking PIN15 as an example
+
+test.c
+
+```sh
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <wiringPi.h>
+
+int main(void)
+{
+  char command [128] ;
+
+  sprintf (command, "/usr/local/bin/gpio export %d out", 3) ;
+  system (command) ;
+  
+  wiringPiSetupSys() ;
+  for(;;)
+  {
+    digitalWrite(3, HIGH) ;
+    delay (500) ;
+    digitalWrite(3,  LOW) ;
+    delay (500) ;
+  }
+}
+```
+
+Compile and run "test.c":
+
+```sh
+gcc -Wall -o test test.c -lwiringPi -lpthread -lm
+sudo ./test
+```
