@@ -148,6 +148,41 @@ static char *physNames [64] =
 } ;
 
 
+static char *physNamesPhantom [64] =
+{
+  NULL,
+
+  "   3.3v", "5v     ",
+  "  SDA.1", "5v     ",
+  "  SCL.1", "0v     ",
+  "   PIN7", "TxD    ",
+  "     0v", "RxD    ",
+  "  PIN11", "PIN12  ",
+  "  PIN13", "0v     ",
+  "  PIN15", "PIN16  ",
+  "   3.3v", "PIN18  ",
+  "   MOSI", "0v     ",
+  "   MISO", "PIN22  ",
+  "   SCLK", "CE0    ",
+  "     0v", "CE1    ",
+  "  SDA.0", "SCL.0  ",
+  "  PIN29", "0v     ",
+  "  PIN31", "PIN32  ",
+  "  PIN33", "0v     ",
+  "  PIN35", "PIN36  ",
+  "  PIN37", "PIN38  ",
+  "     0v", "PIN40  ",
+       NULL, NULL,
+       NULL, NULL,
+       NULL, NULL,
+       NULL, NULL,
+       NULL, NULL,
+       NULL, NULL,
+       NULL, NULL,
+   NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+} ;
+
+
 /*
  * readallPhys:
  *	Given a physical pin output the data on it and the next pin:
@@ -210,6 +245,65 @@ static void readallPhys (int physPin)
     printf (" |     |    ") ;
   else
     printf (" | %-3d | %-3d", physToWpi [physPin], physPinToGpio (physPin)) ;
+
+  printf (" |\n") ;
+}
+
+static void readallPhys_phantom (int physPin)
+{
+  int pin ;
+
+  if (physPinToGpio (physPin) == -1)
+    printf (" |      |    ") ;
+  else
+    printf (" |  %3d | %3d", physPinToGpio (physPin), physToWpi [physPin]) ;
+
+  printf (" | %s", physNamesPhantom [physPin]) ;
+
+  if (physToWpi [physPin] == -1)
+    printf (" |      |  ") ;
+  else
+  {
+    /**/ if (wpMode == WPI_MODE_GPIO)
+      pin = physPinToGpio (physPin) ;
+    else if (wpMode == WPI_MODE_PHYS)
+      pin = physPin ;
+    else
+      pin = physToWpi [physPin] ;
+
+    printf (" | %4s", alts [getAlt (pin)]) ;
+    printf (" | %d", digitalRead (pin)) ;
+  }
+
+// Pin numbers:
+
+  printf (" | %2d", physPin) ;
+  ++physPin ;
+  printf (" || %-2d", physPin) ;
+
+// Same, reversed
+
+  if (physToWpi [physPin] == -1)
+    printf (" |   |     ") ;
+  else
+  {
+    /**/ if (wpMode == WPI_MODE_GPIO)
+      pin = physPinToGpio (physPin) ;
+    else if (wpMode == WPI_MODE_PHYS)
+      pin = physPin ;
+    else
+      pin = physToWpi [physPin] ;
+
+    printf (" | %d", digitalRead (pin)) ;
+    printf (" | %-4s", alts [getAlt (pin)]) ;
+  }
+
+  printf (" | %-5s", physNamesPhantom [physPin]) ;
+
+  if (physToWpi     [physPin] == -1)
+    printf (" |     |     ") ;
+  else
+    printf (" | %-3d | %-3d ", physToWpi [physPin], physPinToGpio (physPin)) ;
 
   printf (" |\n") ;
 }
@@ -337,6 +431,21 @@ static void piPlusReadall (int model)
 }
 
 
+static void phantomReadall()
+{
+  int pin ;
+  printf (" +------+-----+---------+------+---+--Phantom-+---+------+---------+-----+-----+\n") ;
+
+  printf (" | GPIO | wPi |   Name  | Mode | V | Physical | V | Mode | Name    | wPi | GPIO |\n") ;
+  printf (" +------+-----+---------+------+---+----++----+---+------+---------+-----+------+\n") ;
+  for (pin = 1 ; pin <= 40 ; pin += 2)
+    readallPhys_phantom (pin) ;
+  printf (" +------+-----+---------+------+---+----++----+---+------+---------+-----+------+\n") ;
+  printf (" | GPIO | wPi |   Name  | Mode | V | Physical | V | Mode | Name    | wPi | GPIO |\n") ;
+
+  printf (" +------+-----+---------+------+---+--Phantom-+---+------+---------+-----+------+\n") ;
+}
+
 /*
  * doReadall:
  *	Generic read all pins called from main program. Works out the Pi type
@@ -367,6 +476,8 @@ void doReadall (void)
     piPlusReadall (model) ;
   else if ((model == PI_MODEL_CM) || (model == PI_MODEL_CM3) || (model == PI_MODEL_CM3P) )
     allReadall () ;
+  else if (model == PHANTOM_BOARD)
+    phantomReadall () ;
   else
     printf ("Oops - unable to determine board type... model: %d\n", model) ;
 }

@@ -219,7 +219,7 @@ volatile unsigned int *_wiringPiTimerIrqRaw ;
 
 static volatile unsigned int piGpioBase = 0 ;
 
-const char *piModelNames [21] =
+const char *piModelNames [22] =
 {
   "Model A",	//  0
   "Model B",	//  1
@@ -242,6 +242,7 @@ const char *piModelNames [21] =
   "Pi Zero2-W",	// 18
   "Pi 400",	// 19
   "CM4",	// 20
+  "Phantom" //21
 } ;
 
 const char *piRevisionNames [16] =
@@ -271,7 +272,7 @@ const char *piMakerNames [16] =
   "Embest",	//	 2
   "Unknown",	//	 3
   "Embest",	//	 4
-  "Unknown05",	//	 5
+  "EDATEC",	//	 5
   "Unknown06",	//	 6
   "Unknown07",	//	 7
   "Unknown08",	//	 8
@@ -339,8 +340,6 @@ static void (*isrFunctions [64])(void) ;
 //	Take a Wiring pin (0 through X) and re-map it to the BCM_GPIO pin
 //	Cope for 3 different board revisions here.
 
-static int *pinToGpio ;
-
 // Revision 1, 1.1:
 
 static int pinToGpioR1 [64] =
@@ -379,12 +378,31 @@ static int pinToGpioR2 [64] =
 } ;
 
 
+static int pinToGpioPhantom [64] =
+{
+  79, 33, 75, 76, 77, 72, 73, 83,	// wpi  0 -  7
+  70, 71,				// I2C  - SDA0, SCL0			wpi  8 -  9
+  47, 78,				// SPI  - CE1, CE0				wpi 10 - 11
+  45, 46, 48, 			// SPI  - MOSI, MISO, SCLK		wpi 12 - 14
+  37, 38,				// UART - Tx, Rx				wpi 15 - 16
+  -1, -1, -1, -1,		// wpi 17 - 20
+  36, 32, 82, 40, 74,	// wpi 21, 22, 23, 24, 25
+  35, 80, 81, 31,		// wpi 26, 27, 28, 29
+   0,  1,				// wpi 30, 31
+
+// Padding:
+
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 47
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 63
+} ;
+
+static int *pinToGpio = pinToGpioPhantom;
+
 // physToGpio:
 //	Take a physical pin (1 through 26) and re-map it to the BCM_GPIO pin
 //	Cope for 2 different board revisions here.
 //	Also add in the P5 connector, so the P5 pins are 3,4,5,6, so 53,54,55,56
 
-static int *physToGpio ;
 
 static int physToGpioR1 [64] =
 {
@@ -449,6 +467,46 @@ static int physToGpioR2 [64] =
   -1, -1,
   -1, -1,
 } ;
+
+static int physToGpioPhantom [64] =
+{
+  -1,		// 0
+  -1, -1,	// 1, 2
+  70, -1,
+  71, -1,
+  83, 37,
+  -1, 38,
+  79, 33,
+  75, -1,
+  76, 77,
+  -1, 72,
+  45, -1,
+  46, 73,
+  48, 47,
+  -1, 78,	// 25, 26
+
+   0,  1,
+  36, -1,
+  32, 35,
+  82, -1,
+  40, 80,
+  74, 81,
+  -1, 31,
+
+  -1, -1,
+  -1, -1,
+  -1, -1,
+  -1, -1,
+  -1, -1,
+  -1, -1,
+  -1, -1,
+  -1, -1,
+  -1, -1,
+  -1, -1,
+  -1, -1,
+} ;
+
+static int *physToGpio = physToGpioPhantom;
 
 // gpioToGPFSEL:
 //	Map a BCM_GPIO pin to it's Function Selection
@@ -771,6 +829,12 @@ int piGpioLayout (void)
   if (wiringPiDebug)
     printf ("piGpioLayout: Hardware: %s\n", line) ;
 
+  if(strstr (line, "Amlogic") != NULL)
+  { 
+    fclose (cpuFd) ;
+    return PHANTOM_BOARD;
+  }
+
 // See if it's BCM2708 or BCM2709 or the new BCM2835.
 
 // OK. As of Kernel 4.8,  we have BCM2835 only, regardless of model.
@@ -964,14 +1028,27 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *warranty)
 //	Will deal with the properly later on - for now, lets just get it going...
 //  unsigned int modelNum ;
 
-  (void)piGpioLayout () ;	// Call this first to make sure all's OK. Don't care about the result.
+  //(void)piGpioLayout () ;	// Call this first to make sure all's OK. Don't care about the result.
 
   if ((cpuFd = fopen ("/proc/cpuinfo", "r")) == NULL)
     piGpioLayoutOops ("Unable to open /proc/cpuinfo") ;
 
   while (fgets (line, 120, cpuFd) != NULL)
+  {
     if (strncmp (line, "Revision", 8) == 0)
       break ;
+    else if(strstr (line, "Amlogic") != NULL)
+    { 
+      *model    = 21 ;
+      *rev      = 1;
+      *mem      = 3;
+      *maker    = 5;
+      *warranty = 0 ;
+
+      fclose (cpuFd) ;
+      return;
+    }
+  }
 
   fclose (cpuFd) ;
 
@@ -1578,7 +1655,7 @@ int digitalRead (int pin)
     /**/ if (wiringPiMode == WPI_MODE_GPIO_SYS)	// Sys mode
     {
       if (sysFds [pin] == -1)
-	return LOW ;
+	      return LOW ;
 
       lseek  (sysFds [pin], 0L, SEEK_SET) ;
       read   (sysFds [pin], &c, 1) ;
@@ -1642,10 +1719,10 @@ void digitalWrite (int pin, int value)
     {
       if (sysFds [pin] != -1)
       {
-	if (value == LOW)
-	  write (sysFds [pin], "0\n", 2) ;
-	else
-	  write (sysFds [pin], "1\n", 2) ;
+        if (value == LOW)
+          write (sysFds [pin], "0\n", 2) ;
+        else
+          write (sysFds [pin], "1\n", 2) ;
       }
       return ;
     }
@@ -2290,6 +2367,11 @@ int wiringPiSetup (void)
      pinToGpio =  pinToGpioR1 ;
     physToGpio = physToGpioR1 ;
   }
+  else if(piGpioLayout () == PHANTOM_BOARD)
+  {
+    pinToGpio =  pinToGpioPhantom ;
+    physToGpio = physToGpioPhantom ;
+  }
   else 					// A2, B2, A+, B+, CM, Pi2, Pi3, Zero, Zero W, Zero 2 W
   {
      pinToGpio =  pinToGpioR2 ;
@@ -2457,13 +2539,9 @@ int wiringPiSetupPhys (void)
 
 int wiringPiSetupSys (void)
 {
-  int pin ;
+  int pin = -1;
+  int i;
   char fName [128] ;
-
-  if (wiringPiSetuped)
-    return 0 ;
-
-  wiringPiSetuped = TRUE ;
 
   if (getenv (ENV_DEBUG) != NULL)
     wiringPiDebug = TRUE ;
@@ -2476,23 +2554,39 @@ int wiringPiSetupSys (void)
 
   if (piGpioLayout () == 1)
   {
-     pinToGpio =  pinToGpioR1 ;
+    pinToGpio =  pinToGpioR1 ;
     physToGpio = physToGpioR1 ;
+  }
+  else if(piGpioLayout () == PHANTOM_BOARD)
+  {
+    pinToGpio =  pinToGpioPhantom ;
+    physToGpio = physToGpioPhantom ;
   }
   else
   {
-     pinToGpio =  pinToGpioR2 ;
+    pinToGpio =  pinToGpioR2 ;
     physToGpio = physToGpioR2 ;
   }
 
 // Open and scan the directory, looking for exported GPIOs, and pre-open
 //	the 'value' interface to speed things up for later
-
-  for (pin = 0 ; pin < 64 ; ++pin)
+  for (i = 0 ; i < 64 ; ++i)
   {
-    sprintf (fName, "/sys/class/gpio/gpio%d/value", pin) ;
-    sysFds [pin] = open (fName, O_RDWR) ;
+    pin = wpiPinToGpio(i);
+
+    if(pin == -1)
+    {
+      continue;
+    }
+
+    sprintf (fName, "/sys/class/gpio/gpio%d/value", pin+425) ;
+    sysFds [i] = open (fName, O_RDWR) ;
   }
+
+  if (wiringPiSetuped)
+    return 0 ;
+
+  wiringPiSetuped = TRUE ;
 
   initialiseEpoch () ;
 

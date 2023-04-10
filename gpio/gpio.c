@@ -60,7 +60,7 @@ extern void doQmode      (int argc, char *argv []) ;
 #define	MODPROBE		"modprobe"
 #define	RMMOD			"rmmod"
 
-int wpMode ;
+int wpMode = WPI_MODE_GPIO_SYS ;
 
 char *usage = "Usage: gpio -v\n"
               "       gpio -h\n"
@@ -392,15 +392,24 @@ static void doExports (UNU int argc, UNU char *argv [])
 {
   int fd ;
   int i, l, first ;
+  int pin = -1;
   char fName [128] ;
   char buf [16] ;
 
   for (first = 0, i = 0 ; i < 64 ; ++i)	// Crude, but effective
   {
+    if (wpMode == WPI_MODE_GPIO_SYS)
+    {
+      pin = wpiPinToGpio(i);
 
-// Try to read the direction
+      if(pin == -1)
+      {
+        continue;
+      }
+    }
 
-    sprintf (fName, "/sys/class/gpio/gpio%d/direction", i) ;
+    // Try to read the direction
+    sprintf (fName, "/sys/class/gpio/gpio%d/direction", pin+425) ;
     if ((fd = open (fName, O_RDONLY)) == -1)
       continue ;
 
@@ -423,9 +432,8 @@ static void doExports (UNU int argc, UNU char *argv [])
 
     close (fd) ;
 
-// Try to Read the value
-
-    sprintf (fName, "/sys/class/gpio/gpio%d/value", i) ;
+    // Try to Read the value
+    sprintf (fName, "/sys/class/gpio/gpio%d/value", pin+425) ;
     if ((fd = open (fName, O_RDONLY)) == -1)
     {
       printf ("No Value file (huh?)\n") ;
@@ -441,9 +449,8 @@ static void doExports (UNU int argc, UNU char *argv [])
 
     printf ("  %s", buf) ;
 
-// Read any edge trigger file
-
-    sprintf (fName, "/sys/class/gpio/gpio%d/edge", i) ;
+    // Read any edge trigger file
+    sprintf (fName, "/sys/class/gpio/gpio%d/edge", pin+425) ;
     if ((fd = open (fName, O_RDONLY)) == -1)
     {
       printf ("\n") ;
@@ -486,6 +493,9 @@ void doExport (int argc, char *argv [])
 
   pin = atoi (argv [2]) ;
 
+  if (wpMode == WPI_MODE_GPIO_SYS)
+    pin = wpiPinToGpio(pin);
+
   mode = argv [3] ;
 
   if ((fd = fopen ("/sys/class/gpio/export", "w")) == NULL)
@@ -494,10 +504,10 @@ void doExport (int argc, char *argv [])
     exit (1) ;
   }
 
-  fprintf (fd, "%d\n", pin) ;
+  fprintf (fd, "%d\n", pin+425) ;
   fclose (fd) ;
 
-  sprintf (fName, "/sys/class/gpio/gpio%d/direction", pin) ;
+  sprintf (fName, "/sys/class/gpio/gpio%d/direction", pin+425) ;
   if ((fd = fopen (fName, "w")) == NULL)
   {
     fprintf (stderr, "%s: Unable to open GPIO direction interface for pin %d: %s\n", argv [0], pin, strerror (errno)) ;
@@ -522,12 +532,11 @@ void doExport (int argc, char *argv [])
 
 // Change ownership so the current user can actually use it
 
-  sprintf (fName, "/sys/class/gpio/gpio%d/value", pin) ;
+  sprintf (fName, "/sys/class/gpio/gpio%d/value", pin+425) ;
   changeOwner (argv [0], fName) ;
 
-  sprintf (fName, "/sys/class/gpio/gpio%d/edge", pin) ;
+  sprintf (fName, "/sys/class/gpio/gpio%d/edge", pin+425) ;
   changeOwner (argv [0], fName) ;
-
 }
 
 
@@ -599,6 +608,10 @@ void doEdge (int argc, char *argv [])
   }
 
   pin  = atoi (argv [2]) ;
+
+  if (wpMode == WPI_MODE_GPIO_SYS)
+    pin = wpiPinToGpio(pin);
+  
   mode = argv [3] ;
 
 // Export the pin and set direction to input
@@ -609,10 +622,10 @@ void doEdge (int argc, char *argv [])
     exit (1) ;
   }
 
-  fprintf (fd, "%d\n", pin) ;
+  fprintf (fd, "%d\n", pin+425) ;
   fclose (fd) ;
 
-  sprintf (fName, "/sys/class/gpio/gpio%d/direction", pin) ;
+  sprintf (fName, "/sys/class/gpio/gpio%d/direction", pin+425) ;
   if ((fd = fopen (fName, "w")) == NULL)
   {
     fprintf (stderr, "%s: Unable to open GPIO direction interface for pin %d: %s\n", argv [0], pin, strerror (errno)) ;
@@ -622,7 +635,7 @@ void doEdge (int argc, char *argv [])
   fprintf (fd, "in\n") ;
   fclose (fd) ;
 
-  sprintf (fName, "/sys/class/gpio/gpio%d/edge", pin) ;
+  sprintf (fName, "/sys/class/gpio/gpio%d/edge", pin+425) ;
   if ((fd = fopen (fName, "w")) == NULL)
   {
     fprintf (stderr, "%s: Unable to open GPIO edge interface for pin %d: %s\n", argv [0], pin, strerror (errno)) ;
@@ -641,10 +654,10 @@ void doEdge (int argc, char *argv [])
 
 // Change ownership of the value and edge files, so the current user can actually use it!
 
-  sprintf (fName, "/sys/class/gpio/gpio%d/value", pin) ;
+  sprintf (fName, "/sys/class/gpio/gpio%d/value", pin+425) ;
   changeOwner (argv [0], fName) ;
 
-  sprintf (fName, "/sys/class/gpio/gpio%d/edge", pin) ;
+  sprintf (fName, "/sys/class/gpio/gpio%d/edge", pin+425) ;
   changeOwner (argv [0], fName) ;
 
   fclose (fd) ;
@@ -671,13 +684,16 @@ void doUnexport (int argc, char *argv [])
 
   pin = atoi (argv [2]) ;
 
+  if (wpMode == WPI_MODE_GPIO_SYS)
+    pin = wpiPinToGpio(pin);
+
   if ((fd = fopen ("/sys/class/gpio/unexport", "w")) == NULL)
   {
     fprintf (stderr, "%s: Unable to open GPIO export interface\n", argv [0]) ;
     exit (1) ;
   }
 
-  fprintf (fd, "%d\n", pin) ;
+  fprintf (fd, "%d\n", pin+425) ;
   fclose (fd) ;
 }
 
@@ -693,16 +709,27 @@ void doUnexport (int argc, char *argv [])
 void doUnexportall (char *progName)
 {
   FILE *fd ;
-  int pin ;
+  int pin = -1;
+  int i;
 
-  for (pin = 0 ; pin < 63 ; ++pin)
+  for (i = 0 ; i < 64 ; ++i)
   {
+    if (wpMode == WPI_MODE_GPIO_SYS)
+    {
+      pin = wpiPinToGpio(i);
+
+      if(pin == -1)
+      {
+        continue;
+      }
+    }
+
     if ((fd = fopen ("/sys/class/gpio/unexport", "w")) == NULL)
     {
       fprintf (stderr, "%s: Unable to open GPIO export interface\n", progName) ;
       exit (1) ;
     }
-    fprintf (fd, "%d\n", pin) ;
+    fprintf (fd, "%d\n", pin+425) ;
     fclose (fd) ;
   }
 }
@@ -1458,8 +1485,10 @@ int main (int argc, char *argv [])
 
   else
   {
-    wiringPiSetup () ;
-    wpMode = WPI_MODE_PINS ;
+    //wiringPiSetup () ;
+    //wpMode = WPI_MODE_PINS ;
+    wiringPiSetupSys () ;
+    wpMode = WPI_MODE_GPIO_SYS ;
   }
 
 // Check for -x argument to load in a new extension

@@ -40,7 +40,9 @@
 // Mask for the bottom 64 pins which belong to the Raspberry Pi
 //	The others are available for the other devices
 
-#define	PI_GPIO_MASK	(0xFFFFFFC0)
+//#define	PI_GPIO_MASK	(0xFFFFFFC0)
+#define GPIO_NUM 64
+#define PI_GPIO_MASK       (~(GPIO_NUM - 1))
 
 // Handy defines
 
@@ -107,6 +109,7 @@
 #define	PI_MODEL_ZERO_2W	18
 #define	PI_MODEL_400		19
 #define	PI_MODEL_CM4		20
+#define PHANTOM_BOARD   21
 
 #define	PI_VERSION_1		0
 #define	PI_VERSION_1_1		1
@@ -118,7 +121,7 @@
 #define	PI_MAKER_EMBEST		2
 #define	PI_MAKER_UNKNOWN	3
 
-extern const char *piModelNames    [21] ;
+extern const char *piModelNames    [22] ;
 extern const char *piRevisionNames [16] ;
 extern const char *piMakerNames    [16] ;
 extern const int   piMemorySize    [ 8] ;
