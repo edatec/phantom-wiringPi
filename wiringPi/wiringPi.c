@@ -1506,6 +1506,8 @@ void pinModeAlt (int pin, int mode)
 
 void pinMode (int pin, int mode)
 {
+  FILE *fd ;
+  char fName [128] ;
   int    fSel, shift, alt ;
   struct wiringPiNodeStruct *node = wiringPiNodes ;
   int origPin = pin ;
@@ -1518,6 +1520,44 @@ void pinMode (int pin, int mode)
       pin = pinToGpio [pin] ;
     else if (wiringPiMode == WPI_MODE_PHYS)
       pin = physToGpio [pin] ;
+    else if (wiringPiMode == WPI_MODE_GPIO_SYS)
+    {
+      int wPi_pin = pin;
+      pin = wpiPinToGpio(pin);
+
+      if ((fd = fopen ("/sys/class/gpio/export", "w")) == NULL)
+      {
+        fprintf (stderr, "Unable to open GPIO export interface: %s\n", strerror (errno)) ;
+        exit (1) ;
+      }
+
+      fprintf (fd, "%d\n", pin+425) ;
+      fclose (fd) ;
+
+      sprintf (fName, "/sys/class/gpio/gpio%d/direction", pin+425) ;
+      if ((fd = fopen (fName, "w")) == NULL)
+      {
+        fprintf (stderr, "Unable to open GPIO direction interface for pin %d: %s\n", wPi_pin, strerror (errno)) ;
+        exit (1) ;
+      }
+
+      if (mode == INPUT)
+        fprintf (fd, "in\n") ;
+      else if (mode == OUTPUT)
+        fprintf (fd, "out\n") ;
+      else
+      {
+        fprintf (stderr, "Invalid mode: %d. Should be in, out\n", mode) ;
+        exit (1) ;
+      }
+      fclose (fd) ;
+
+      close(sysFds [wPi_pin]);
+      sprintf (fName, "/sys/class/gpio/gpio%d/value", pin+425) ;
+      sysFds [wPi_pin] = open (fName, O_RDWR) ;
+      
+      return;
+    }
     else if (wiringPiMode != WPI_MODE_GPIO)
       return ;
 
