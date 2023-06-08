@@ -378,8 +378,7 @@ static int pinToGpioR2 [64] =
 } ;
 
 
-static int pinToGpioPhantom [64] =
-{
+/* old
   79, 33, 75, 76, 77, 72, 73, 83,	// wpi  0 -  7
   70, 71,				// I2C  - SDA0, SCL0			wpi  8 -  9
   47, 78,				// SPI  - CE1, CE0				wpi 10 - 11
@@ -389,6 +388,19 @@ static int pinToGpioPhantom [64] =
   36, 32, 82, 40, 74,	// wpi 21, 22, 23, 24, 25
   35, 80, 81, 31,		// wpi 26, 27, 28, 29
    0,  1,				// wpi 30, 31
+*/
+
+static int pinToGpioPhantom [64] =
+{
+  0, 1, 70, 71, 83, 36, 32, 78,	// wpi  0 -  7
+  47, 46,				// I2C  - SDA0, SCL0			wpi  8 -  9
+  45, 48,				// SPI  - CE1, CE0				wpi 10 - 11
+  35, 82, 37, 			// SPI  - MOSI, MISO, SCLK		wpi 12 - 14
+  38, 80,				// UART - Tx, Rx				wpi 15 - 16
+  79, 33, 40, 81,		// wpi 17 - 20
+  31, 76, 77, 72, 73,	// wpi 21, 22, 23, 24, 25
+  74, 75, -1, -1,		// wpi 26, 27, 28, 29
+  -1, -1,				// wpi 30, 31
 
 // Padding:
 
